@@ -55,6 +55,7 @@ func main() {
 		r.Delete("/players/{id}", handler.DeletePlayer)
 		r.Get("/games", handler.ListGames)
 		r.Post("/games", handler.CreateGame)
+		r.Delete("/games/{id}", handler.DeleteGame)
 		r.Get("/leaderboard", handler.Leaderboard)
 	})
 

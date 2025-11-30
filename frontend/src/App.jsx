@@ -85,6 +85,15 @@ function App() {
     fetchGames()
   }
 
+  const deleteGame = async (gameId) => {
+    if (!confirm('Undo this game? This will revert all rating changes.')) return
+    await fetch(`${API_URL}/games/${gameId}`, {
+      method: 'DELETE'
+    })
+    fetchLeaderboard()
+    fetchGames()
+  }
+
   return (
     <div className="app">
       <h1>🏓 Foosball Elo Ratings</h1>
@@ -192,7 +201,15 @@ function App() {
           <h2>Recent Games</h2>
           {games.map(game => (
             <div key={game.id} className="game">
-              <div className="game-header">{game.game_type}</div>
+              <div className="game-header">
+                {game.game_type}
+                <button 
+                  onClick={() => deleteGame(game.id)}
+                  style={{background: '#e74c3c', padding: '5px 10px', fontSize: '12px', marginLeft: '10px'}}
+                >
+                  Undo
+                </button>
+              </div>
               <div className="game-teams">
                 <div className="game-team">
                   {game.players.filter(p => p.team === 1).map(p => (

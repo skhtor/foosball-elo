@@ -219,6 +219,61 @@ func (r *Repository) GetLeaderboard(ctx context.Context) ([]models.LeaderboardEn
 	return entries, rows.Err()
 }
 
+func (r *Repository) DeleteGame(ctx context.Context, gameID string) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Get all participants to revert their ratings
+	rows, err := tx.Query(ctx,
+		`SELECT player_id, rating_before FROM game_participants WHERE game_id = $1`,
+		gameID,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	type revert struct {
+		playerID     int
+		ratingBefore int
+	}
+	var reverts []revert
+
+	for rows.Next() {
+		var r revert
+		if err := rows.Scan(&r.playerID, &r.ratingBefore); err != nil {
+			return err
+		}
+		reverts = append(reverts, r)
+	}
+
+	if len(reverts) == 0 {
+		return fmt.Errorf("game not found")
+	}
+
+	// Revert each player's rating and decrement games_played
+	for _, rev := range reverts {
+		_, err = tx.Exec(ctx,
+			`UPDATE players SET rating = $1, games_played = games_played - 1 WHERE id = $2`,
+			rev.ratingBefore, rev.playerID,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Delete the game (cascades to game_participants)
+	_, err = tx.Exec(ctx, `DELETE FROM games WHERE id = $1`, gameID)
+	if err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
 func (r *Repository) DeletePlayer(ctx context.Context, playerID string) error {
 	result, err := r.db.Exec(ctx, `DELETE FROM players WHERE id = $1`, playerID)
 	if err != nil {

@@ -99,6 +99,22 @@ func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, map[string]string{"error": message})
 }
 
+func (h *Handler) DeleteGame(w http.ResponseWriter, r *http.Request) {
+	gameID := chi.URLParam(r, "id")
+	if gameID == "" {
+		respondError(w, http.StatusBadRequest, "Game ID required")
+		return
+	}
+
+	err := h.repo.DeleteGame(r.Context(), gameID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Game deleted and ratings reverted"})
+}
+
 func (h *Handler) DeletePlayer(w http.ResponseWriter, r *http.Request) {
 	playerID := chi.URLParam(r, "id")
 	if playerID == "" {
