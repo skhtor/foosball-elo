@@ -4,6 +4,7 @@ import { BrowserRouter, Routes, Route } from 'react-router-dom'
 import './index.css'
 import App from './App.jsx'
 import Leaderboard from './Leaderboard.jsx'
+import Game from './Game.jsx'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
@@ -11,6 +12,7 @@ createRoot(document.getElementById('root')).render(
       <Routes>
         <Route path="/" element={<App />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
+        <Route path="/games" element={<Game />} />
       </Routes>
     </BrowserRouter>
   </StrictMode>,
