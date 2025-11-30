@@ -96,7 +96,7 @@ function App() {
 
   return (
     <div className="app">
-      <h1>🏓 Foosball Elo Ratings</h1>
+      <h1>⚽ Foosball Elo Ratings</h1>
 
       <div className="container">
         <div className="section">

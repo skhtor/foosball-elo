@@ -20,7 +20,7 @@ function Leaderboard() {
 
   return (
     <div className="app">
-      <h1>🏓 Foosball Leaderboard</h1>
+      <h1>⚽ Foosball Leaderboard</h1>
       <div className="container">
         <div className="section">
           <table>
