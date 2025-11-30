@@ -60,18 +60,35 @@ input, select {
 }
 
 button {
-  padding: 10px 20px;
+  padding: 8px 12px;
   background: #3498db;
   color: white;
   border: none;
   border-radius: 4px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
+  margin-right: 5px;
 }
 
 button:hover {
   background: #2980b9;
+}
+
+button.delete {
+  background: #e74c3c;
+}
+
+button.delete:hover {
+  background: #c0392b;
+}
+
+button.edit {
+  background: #f39c12;
+}
+
+button.edit:hover {
+  background: #d68910;
 }
 
 .game-type {

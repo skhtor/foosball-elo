@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import Navigation from './Navigation'
 import './App.css'
 
 const API_URL = import.meta.env.DEV ? 'http://localhost:8080/api' : window.location.origin + '/api'
@@ -21,6 +22,7 @@ function Leaderboard() {
   return (
     <div className="app">
       <h1>⚽ Foosball Leaderboard</h1>
+      <Navigation />
       <div className="container">
         <div className="section">
           <table>

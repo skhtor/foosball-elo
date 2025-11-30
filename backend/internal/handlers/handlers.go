@@ -115,6 +115,31 @@ func (h *Handler) DeleteGame(w http.ResponseWriter, r *http.Request) {
 	respondJSON(w, http.StatusOK, map[string]string{"message": "Game deleted and ratings reverted"})
 }
 
+func (h *Handler) UpdateGame(w http.ResponseWriter, r *http.Request) {
+	gameID := chi.URLParam(r, "id")
+	if gameID == "" {
+		respondError(w, http.StatusBadRequest, "Game ID required")
+		return
+	}
+
+	var req struct {
+		Team1Score int `json:"team1_score"`
+		Team2Score int `json:"team2_score"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	err := h.repo.UpdateGame(r.Context(), gameID, req.Team1Score, req.Team2Score)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Game updated and ratings recalculated"})
+}
+
 func (h *Handler) DeletePlayer(w http.ResponseWriter, r *http.Request) {
 	playerID := chi.URLParam(r, "id")
 	if playerID == "" {
@@ -129,4 +154,33 @@ func (h *Handler) DeletePlayer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, map[string]string{"message": "Player deleted"})
+}
+
+func (h *Handler) UpdatePlayer(w http.ResponseWriter, r *http.Request) {
+	playerID := chi.URLParam(r, "id")
+	if playerID == "" {
+		respondError(w, http.StatusBadRequest, "Player ID required")
+		return
+	}
+
+	var req struct {
+		Name string `json:"name"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if req.Name == "" {
+		respondError(w, http.StatusBadRequest, "Name is required")
+		return
+	}
+
+	err := h.repo.UpdatePlayer(r.Context(), playerID, req.Name)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Player updated"})
 }

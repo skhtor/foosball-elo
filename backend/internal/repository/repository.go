@@ -274,6 +274,114 @@ func (r *Repository) DeleteGame(ctx context.Context, gameID string) error {
 	return tx.Commit(ctx)
 }
 
+func (r *Repository) UpdateGame(ctx context.Context, gameID string, team1Score, team2Score int) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	// Get game info
+	var gameType string
+	err = tx.QueryRow(ctx, `SELECT game_type FROM games WHERE id = $1`, gameID).Scan(&gameType)
+	if err != nil {
+		return fmt.Errorf("game not found")
+	}
+
+	// Get all participants with their original ratings
+	rows, err := tx.Query(ctx,
+		`SELECT player_id, team, rating_before FROM game_participants WHERE game_id = $1 ORDER BY team`,
+		gameID,
+	)
+	if err != nil {
+		return err
+	}
+	defer rows.Close()
+
+	type participant struct {
+		playerID     int
+		team         int
+		ratingBefore int
+	}
+	var participants []participant
+
+	for rows.Next() {
+		var p participant
+		if err := rows.Scan(&p.playerID, &p.team, &p.ratingBefore); err != nil {
+			return err
+		}
+		participants = append(participants, p)
+	}
+
+	// Separate by team
+	var team1Players, team2Players []participant
+	for _, p := range participants {
+		if p.team == 1 {
+			team1Players = append(team1Players, p)
+		} else {
+			team2Players = append(team2Players, p)
+		}
+	}
+
+	// Calculate new ratings
+	team1Ratings := make([]int, len(team1Players))
+	for i, p := range team1Players {
+		team1Ratings[i] = p.ratingBefore
+	}
+
+	team2Ratings := make([]int, len(team2Players))
+	for i, p := range team2Players {
+		team2Ratings[i] = p.ratingBefore
+	}
+
+	deltaTeam1, deltaTeam2 := elo.CalculateNewRatings(
+		elo.AverageRating(team1Ratings),
+		elo.AverageRating(team2Ratings),
+		team1Score > team2Score,
+	)
+
+	// Update game_participants with new scores and ratings
+	for _, p := range team1Players {
+		newRating := p.ratingBefore + deltaTeam1
+		_, err = tx.Exec(ctx,
+			`UPDATE game_participants SET score = $1, rating_after = $2 WHERE game_id = $3 AND player_id = $4`,
+			team1Score, newRating, gameID, p.playerID,
+		)
+		if err != nil {
+			return err
+		}
+		// Update player's current rating
+		_, err = tx.Exec(ctx,
+			`UPDATE players SET rating = rating - $1 + $2 WHERE id = $3`,
+			p.ratingBefore+deltaTeam1, newRating, p.playerID,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, p := range team2Players {
+		newRating := p.ratingBefore + deltaTeam2
+		_, err = tx.Exec(ctx,
+			`UPDATE game_participants SET score = $1, rating_after = $2 WHERE game_id = $3 AND player_id = $4`,
+			team2Score, newRating, gameID, p.playerID,
+		)
+		if err != nil {
+			return err
+		}
+		// Update player's current rating
+		_, err = tx.Exec(ctx,
+			`UPDATE players SET rating = rating - $1 + $2 WHERE id = $3`,
+			p.ratingBefore+deltaTeam2, newRating, p.playerID,
+		)
+		if err != nil {
+			return err
+		}
+	}
+
+	return tx.Commit(ctx)
+}
+
 func (r *Repository) DeletePlayer(ctx context.Context, playerID string) error {
 	result, err := r.db.Exec(ctx, `DELETE FROM players WHERE id = $1`, playerID)
 	if err != nil {
@@ -282,6 +390,19 @@ func (r *Repository) DeletePlayer(ctx context.Context, playerID string) error {
 	
 	rowsAffected := result.RowsAffected()
 	if rowsAffected == 0 {
+		return fmt.Errorf("player not found")
+	}
+	
+	return nil
+}
+
+func (r *Repository) UpdatePlayer(ctx context.Context, playerID string, name string) error {
+	result, err := r.db.Exec(ctx, `UPDATE players SET name = $1 WHERE id = $2`, name, playerID)
+	if err != nil {
+		return err
+	}
+	
+	if result.RowsAffected() == 0 {
 		return fmt.Errorf("player not found")
 	}
 	
