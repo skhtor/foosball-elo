@@ -52,6 +52,7 @@ func main() {
 		r.Get("/health", handler.Health)
 		r.Get("/players", handler.ListPlayers)
 		r.Post("/players", handler.CreatePlayer)
+		r.Delete("/players/{id}", handler.DeletePlayer)
 		r.Get("/games", handler.ListGames)
 		r.Post("/games", handler.CreateGame)
 		r.Get("/leaderboard", handler.Leaderboard)

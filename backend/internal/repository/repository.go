@@ -218,3 +218,17 @@ func (r *Repository) GetLeaderboard(ctx context.Context) ([]models.LeaderboardEn
 	}
 	return entries, rows.Err()
 }
+
+func (r *Repository) DeletePlayer(ctx context.Context, playerID string) error {
+	result, err := r.db.Exec(ctx, `DELETE FROM players WHERE id = $1`, playerID)
+	if err != nil {
+		return err
+	}
+	
+	rowsAffected := result.RowsAffected()
+	if rowsAffected == 0 {
+		return fmt.Errorf("player not found")
+	}
+	
+	return nil
+}

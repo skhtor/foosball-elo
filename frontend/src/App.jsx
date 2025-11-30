@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import './App.css'
 
-const API_URL = window.location.origin + '/api'
+const API_URL = import.meta.env.DEV ? 'http://localhost:8080/api' : window.location.origin + '/api'
 
 function App() {
   const [players, setPlayers] = useState([])
@@ -47,6 +47,15 @@ function App() {
       body: JSON.stringify({ name: newPlayerName })
     })
     setNewPlayerName('')
+    fetchPlayers()
+    fetchLeaderboard()
+  }
+
+  const deletePlayer = async (playerId) => {
+    if (!confirm('Are you sure you want to delete this player?')) return
+    await fetch(`${API_URL}/players/${playerId}`, {
+      method: 'DELETE'
+    })
     fetchPlayers()
     fetchLeaderboard()
   }
@@ -154,6 +163,7 @@ function App() {
                 <th>Rating</th>
                 <th>W-L</th>
                 <th>Games</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
@@ -164,6 +174,14 @@ function App() {
                   <td><strong>{player.rating}</strong></td>
                   <td>{player.wins}-{player.losses}</td>
                   <td>{player.games_played}</td>
+                  <td>
+                    <button 
+                      onClick={() => deletePlayer(player.id)}
+                      style={{background: '#e74c3c', padding: '5px 10px', fontSize: '12px'}}
+                    >
+                      Delete
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>

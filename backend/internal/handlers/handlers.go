@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"github.com/sassoonkuyumcian/foosball-elo/internal/models"
 	"github.com/sassoonkuyumcian/foosball-elo/internal/repository"
 )
@@ -96,4 +97,20 @@ func respondJSON(w http.ResponseWriter, status int, data interface{}) {
 
 func respondError(w http.ResponseWriter, status int, message string) {
 	respondJSON(w, status, map[string]string{"error": message})
+}
+
+func (h *Handler) DeletePlayer(w http.ResponseWriter, r *http.Request) {
+	playerID := chi.URLParam(r, "id")
+	if playerID == "" {
+		respondError(w, http.StatusBadRequest, "Player ID required")
+		return
+	}
+
+	err := h.repo.DeletePlayer(r.Context(), playerID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	respondJSON(w, http.StatusOK, map[string]string{"message": "Player deleted"})
 }
