@@ -84,6 +84,7 @@ function AddPlayer() {
               <tr>
                 <th>Name</th>
                 <th>Rating</th>
+                <th>W-L</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -103,6 +104,7 @@ function AddPlayer() {
                     )}
                   </td>
                   <td>{Math.round(p.rating)}</td>
+                  <td>{p.wins}-{p.losses}</td>
                   <td>
                     {editingId === p.id ? (
                       <>

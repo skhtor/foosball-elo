@@ -26,17 +26,24 @@ func (r *Repository) CreatePlayer(ctx context.Context, name string) (*models.Pla
 	return &player, err
 }
 
-func (r *Repository) ListPlayers(ctx context.Context) ([]models.Player, error) {
-	rows, err := r.db.Query(ctx, `SELECT id, name, rating, games_played, created_at FROM players ORDER BY rating DESC`)
+func (r *Repository) ListPlayers(ctx context.Context) ([]models.LeaderboardEntry, error) {
+	rows, err := r.db.Query(ctx,
+		`SELECT p.id, p.name, p.rating, p.games_played, p.created_at,
+		        COUNT(CASE WHEN gp.rating_after > gp.rating_before THEN 1 END) as wins,
+		        COUNT(CASE WHEN gp.rating_after < gp.rating_before THEN 1 END) as losses
+		 FROM players p
+		 LEFT JOIN game_participants gp ON p.id = gp.player_id
+		 GROUP BY p.id
+		 ORDER BY rating DESC`)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
 
-	var players []models.Player
+	var players []models.LeaderboardEntry
 	for rows.Next() {
-		var p models.Player
-		if err := rows.Scan(&p.ID, &p.Name, &p.Rating, &p.GamesPlayed, &p.CreatedAt); err != nil {
+		var p models.LeaderboardEntry
+		if err := rows.Scan(&p.ID, &p.Name, &p.Rating, &p.GamesPlayed, &p.CreatedAt, &p.Wins, &p.Losses); err != nil {
 			return nil, err
 		}
 		players = append(players, p)
