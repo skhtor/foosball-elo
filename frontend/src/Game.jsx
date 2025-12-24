@@ -12,10 +12,22 @@ function Game() {
   const [team2Players, setTeam2Players] = useState([])
   const [winner, setWinner] = useState('team1')
   const [editingGame, setEditingGame] = useState(null)
+  const [searchTerms, setSearchTerms] = useState({
+    team1_0: '', team1_1: '', team2_0: '', team2_1: ''
+  })
+  const [showDropdowns, setShowDropdowns] = useState({
+    team1_0: false, team1_1: false, team2_0: false, team2_1: false
+  })
 
   useEffect(() => {
     fetchPlayers()
     fetchGames()
+
+    const handleClickOutside = () => {
+      setShowDropdowns({ team1_0: false, team1_1: false, team2_0: false, team2_1: false })
+    }
+    document.addEventListener('click', handleClickOutside)
+    return () => document.removeEventListener('click', handleClickOutside)
   }, [])
 
   const fetchPlayers = async () => {
@@ -28,6 +40,29 @@ function Game() {
     const res = await fetch(`${API_URL}/games`)
     const data = await res.json()
     setGames(data || [])
+  }
+
+  const filterPlayers = (searchTerm, excludeIds = []) => {
+    if (!searchTerm) return players.filter(p => !excludeIds.includes(p.id))
+    return players.filter(p =>
+      !excludeIds.includes(p.id) &&
+      p.name.toLowerCase().includes(searchTerm.toLowerCase())
+    ).sort((a, b) => a.name.localeCompare(b.name))
+  }
+
+  const selectPlayer = (playerId, playerName, field) => {
+    const [team, index] = field.split('_')
+    if (team === 'team1') {
+      const newPlayers = [...team1Players]
+      newPlayers[parseInt(index)] = playerId
+      setTeam1Players(newPlayers.filter(Boolean))
+    } else {
+      const newPlayers = [...team2Players]
+      newPlayers[parseInt(index)] = playerId
+      setTeam2Players(newPlayers.filter(Boolean))
+    }
+    setSearchTerms(prev => ({ ...prev, [field]: playerName }))
+    setShowDropdowns(prev => ({ ...prev, [field]: false }))
   }
 
   const recordGame = async (e) => {
@@ -49,6 +84,8 @@ function Game() {
     setTeam1Players([])
     setTeam2Players([])
     setWinner('team1')
+    setSearchTerms({ team1_0: '', team1_1: '', team2_0: '', team2_1: '' })
+    setShowDropdowns({ team1_0: false, team1_1: false, team2_0: false, team2_1: false })
     fetchGames()
   }
 
@@ -99,29 +136,97 @@ function Game() {
             <div className="teams">
               <div className="team">
                 <h3>Team 1</h3>
-                <select value={team1Players[0] || ''} onChange={(e) => setTeam1Players([e.target.value])}>
-                  <option value="">Select player</option>
-                  {players.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                <div style={{position: 'relative'}}>
+                  <input
+                    type="text"
+                    placeholder="Search player..."
+                    value={searchTerms.team1_0}
+                    onChange={(e) => {
+                      setSearchTerms(prev => ({ ...prev, team1_0: e.target.value }))
+                      setShowDropdowns(prev => ({ ...prev, team1_0: true }))
+                    }}
+                    onFocus={() => setShowDropdowns(prev => ({ ...prev, team1_0: true }))}
+                  />
+                  {showDropdowns.team1_0 && (
+                    <div style={{position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto', zIndex: 1000}}>
+                      {filterPlayers(searchTerms.team1_0).map(p => (
+                        <div key={p.id} onClick={() => selectPlayer(p.id, p.name, 'team1_0')} style={{padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee'}}>
+                          {p.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {gameType === 'doubles' && (
-                  <select value={team1Players[1] || ''} onChange={(e) => setTeam1Players([team1Players[0], e.target.value])}>
-                    <option value="">Select partner</option>
-                    {players.filter(p => p.id !== Number(team1Players[0])).sort((a, b) => a.name.localeCompare(b.name)).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
+                  <div style={{position: 'relative', marginTop: '10px'}}>
+                    <input
+                      type="text"
+                      placeholder="Search partner..."
+                      value={searchTerms.team1_1}
+                      onChange={(e) => {
+                        setSearchTerms(prev => ({ ...prev, team1_1: e.target.value }))
+                        setShowDropdowns(prev => ({ ...prev, team1_1: true }))
+                      }}
+                      onFocus={() => setShowDropdowns(prev => ({ ...prev, team1_1: true }))}
+                    />
+                    {showDropdowns.team1_1 && (
+                      <div style={{position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto', zIndex: 1000}}>
+                        {filterPlayers(searchTerms.team1_1, [Number(team1Players[0])]).map(p => (
+                          <div key={p.id} onClick={() => selectPlayer(p.id, p.name, 'team1_1')} style={{padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee'}}>
+                            {p.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
               <div className="team">
                 <h3>Team 2</h3>
-                <select value={team2Players[0] || ''} onChange={(e) => setTeam2Players([e.target.value])}>
-                  <option value="">Select player</option>
-                  {players.filter(p => !team1Players.includes(String(p.id))).sort((a, b) => a.name.localeCompare(b.name)).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                </select>
+                <div style={{position: 'relative'}}>
+                  <input
+                    type="text"
+                    placeholder="Search player..."
+                    value={searchTerms.team2_0}
+                    onChange={(e) => {
+                      setSearchTerms(prev => ({ ...prev, team2_0: e.target.value }))
+                      setShowDropdowns(prev => ({ ...prev, team2_0: true }))
+                    }}
+                    onFocus={() => setShowDropdowns(prev => ({ ...prev, team2_0: true }))}
+                  />
+                  {showDropdowns.team2_0 && (
+                    <div style={{position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto', zIndex: 1000}}>
+                      {filterPlayers(searchTerms.team2_0, team1Players.map(Number)).map(p => (
+                        <div key={p.id} onClick={() => selectPlayer(p.id, p.name, 'team2_0')} style={{padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee'}}>
+                          {p.name}
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
                 {gameType === 'doubles' && (
-                  <select value={team2Players[1] || ''} onChange={(e) => setTeam2Players([team2Players[0], e.target.value])}>
-                    <option value="">Select partner</option>
-                    {players.filter(p => p.id !== Number(team2Players[0]) && !team1Players.includes(String(p.id))).sort((a, b) => a.name.localeCompare(b.name)).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                  </select>
+                  <div style={{position: 'relative', marginTop: '10px'}}>
+                    <input
+                      type="text"
+                      placeholder="Search partner..."
+                      value={searchTerms.team2_1}
+                      onChange={(e) => {
+                        setSearchTerms(prev => ({ ...prev, team2_1: e.target.value }))
+                        setShowDropdowns(prev => ({ ...prev, team2_1: true }))
+                      }}
+                      onFocus={() => setShowDropdowns(prev => ({ ...prev, team2_1: true }))}
+                    />
+                    {showDropdowns.team2_1 && (
+                      <div style={{position: 'absolute', top: '100%', left: 0, right: 0, background: 'white', border: '1px solid #ccc', maxHeight: '200px', overflowY: 'auto', zIndex: 1000}}>
+                        {filterPlayers(searchTerms.team2_1, [...team1Players.map(Number), Number(team2Players[0])]).map(p => (
+                          <div key={p.id} onClick={() => selectPlayer(p.id, p.name, 'team2_1')} style={{padding: '8px', cursor: 'pointer', borderBottom: '1px solid #eee'}}>
+                            {p.name}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
             </div>
@@ -152,14 +257,14 @@ function Game() {
               <div key={game.id} className="game">
                 <div className="game-header">
                   {game.game_type}
-                  <button 
+                  <button
                     className="edit"
                     onClick={() => editGame(game)}
                     style={{marginLeft: '10px'}}
                   >
                     Edit
                   </button>
-                  <button 
+                  <button
                     className="delete"
                     onClick={() => deleteGame(game.id)}
                     style={{marginLeft: '10px'}}
@@ -172,23 +277,23 @@ function Game() {
                     <div style={{marginBottom: '10px'}}>
                       <strong>Winner:</strong>
                       <label style={{marginLeft: '15px'}}>
-                        <input 
-                          type="radio" 
+                        <input
+                          type="radio"
                           name={`winner-${game.id}`}
                           value="team1"
                           defaultChecked={team1Won}
                         /> Team 1
                       </label>
                       <label style={{marginLeft: '15px'}}>
-                        <input 
-                          type="radio" 
+                        <input
+                          type="radio"
                           name={`winner-${game.id}`}
                           value="team2"
                           defaultChecked={!team1Won}
                         /> Team 2
                       </label>
                     </div>
-                    <button 
+                    <button
                       onClick={() => {
                         const newWinner = document.querySelector(`input[name="winner-${game.id}"]:checked`).value
                         updateGame(game.id, newWinner)
@@ -197,7 +302,7 @@ function Game() {
                     >
                       Save
                     </button>
-                    <button 
+                    <button
                       onClick={() => setEditingGame(null)}
                       style={{background: '#95a5a6'}}
                     >
