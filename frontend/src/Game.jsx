@@ -21,7 +21,7 @@ function Game() {
   const fetchPlayers = async () => {
     const res = await fetch(`${API_URL}/players`)
     const data = await res.json()
-    setPlayers(data || [])
+    setPlayers((data || []).sort((a, b) => a.name.localeCompare(b.name)))
   }
 
   const fetchGames = async () => {
@@ -106,7 +106,7 @@ function Game() {
                 {gameType === 'doubles' && (
                   <select value={team1Players[1] || ''} onChange={(e) => setTeam1Players([team1Players[0], e.target.value])}>
                     <option value="">Select partner</option>
-                    {players.filter(p => p.id !== Number(team1Players[0])).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    {players.filter(p => p.id !== Number(team1Players[0])).sort((a, b) => a.name.localeCompare(b.name)).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 )}
               </div>
@@ -115,12 +115,12 @@ function Game() {
                 <h3>Team 2</h3>
                 <select value={team2Players[0] || ''} onChange={(e) => setTeam2Players([e.target.value])}>
                   <option value="">Select player</option>
-                  {players.filter(p => !team1Players.includes(String(p.id))).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  {players.filter(p => !team1Players.includes(String(p.id))).sort((a, b) => a.name.localeCompare(b.name)).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                 </select>
                 {gameType === 'doubles' && (
                   <select value={team2Players[1] || ''} onChange={(e) => setTeam2Players([team2Players[0], e.target.value])}>
                     <option value="">Select partner</option>
-                    {players.filter(p => p.id !== Number(team2Players[0]) && !team1Players.includes(String(p.id))).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    {players.filter(p => p.id !== Number(team2Players[0]) && !team1Players.includes(String(p.id))).sort((a, b) => a.name.localeCompare(b.name)).map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
                   </select>
                 )}
               </div>
