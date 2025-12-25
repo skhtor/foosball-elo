@@ -1,7 +1,28 @@
 import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
+import {
+  Chart as ChartJS,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend,
+} from 'chart.js'
+import { Line } from 'react-chartjs-2'
 import Navigation from './Navigation'
 import './App.css'
+
+ChartJS.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  Title,
+  Tooltip,
+  Legend
+)
 
 const API_URL = import.meta.env.DEV ? 'http://localhost:8080/api' : window.location.origin + '/api'
 
@@ -105,20 +126,50 @@ function PlayerStats() {
         {/* Rating History Chart */}
         <div className="section">
           <h2>Rating History</h2>
-          <div style={{height: '300px', border: '1px solid #ddd', borderRadius: '4px', padding: '20px', position: 'relative', background: '#f8f9fa'}}>
+          <div style={{height: '400px', padding: '20px'}}>
             {ratingHistory.length > 1 ? (
-              <svg width="100%" height="100%" viewBox="0 0 800 260">
-                <defs>
-                  <linearGradient id="ratingGradient" x1="0%" y1="0%" x2="0%" y2="100%">
-                    <stop offset="0%" stopColor="#3498db" stopOpacity="0.3"/>
-                    <stop offset="100%" stopColor="#3498db" stopOpacity="0.1"/>
-                  </linearGradient>
-                </defs>
-                {/* Chart implementation would go here */}
-                <text x="400" y="130" textAnchor="middle" fill="#7f8c8d">
-                  Rating chart visualization (requires chart library)
-                </text>
-              </svg>
+              <Line
+                data={{
+                  labels: ratingHistory.map(point => new Date(point.date).toLocaleDateString()),
+                  datasets: [
+                    {
+                      label: 'Rating',
+                      data: ratingHistory.map(point => point.rating),
+                      borderColor: '#3498db',
+                      backgroundColor: 'rgba(52, 152, 219, 0.1)',
+                      fill: true,
+                      tension: 0.1,
+                    },
+                  ],
+                }}
+                options={{
+                  responsive: true,
+                  maintainAspectRatio: false,
+                  plugins: {
+                    legend: {
+                      display: false,
+                    },
+                    title: {
+                      display: false,
+                    },
+                  },
+                  scales: {
+                    y: {
+                      beginAtZero: false,
+                      title: {
+                        display: true,
+                        text: 'Rating'
+                      }
+                    },
+                    x: {
+                      title: {
+                        display: true,
+                        text: 'Date'
+                      }
+                    }
+                  },
+                }}
+              />
             ) : (
               <div style={{display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#7f8c8d'}}>
                 Not enough games for rating history
