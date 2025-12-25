@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import Navigation from './Navigation'
 import './App.css'
 
@@ -39,7 +40,7 @@ function Leaderboard() {
               {leaderboard.map((player, idx) => (
                 <tr key={player.id}>
                   <td>{idx + 1}</td>
-                  <td>{player.name}</td>
+                  <td><Link to={`/player/${player.id}`} style={{color: '#3498db', textDecoration: 'none'}}>{player.name}</Link></td>
                   <td><strong>{player.rating}</strong></td>
                   <td>{player.wins}-{player.losses}</td>
                   <td>{player.games_played}</td>

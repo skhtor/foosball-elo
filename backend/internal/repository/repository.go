@@ -415,3 +415,228 @@ func (r *Repository) UpdatePlayer(ctx context.Context, playerID string, name str
 	
 	return nil
 }
+
+func (r *Repository) GetPlayerByID(ctx context.Context, playerID int) (*models.Player, error) {
+	var player models.Player
+	err := r.db.QueryRow(ctx, `SELECT id, name, rating, games_played, created_at FROM players WHERE id = $1`, playerID).
+		Scan(&player.ID, &player.Name, &player.Rating, &player.GamesPlayed, &player.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &player, nil
+}
+
+func (r *Repository) GetPlayerStats(ctx context.Context, playerID int) (*models.PlayerStats, error) {
+	var stats models.PlayerStats
+	
+	// Get basic stats
+	err := r.db.QueryRow(ctx, `
+		SELECT 
+			COUNT(*) as total_games,
+			COALESCE(AVG(CASE WHEN gp.rating_after > gp.rating_before THEN 1.0 ELSE 0.0 END), 0) as win_rate,
+			COALESCE(AVG(gp.rating_after - gp.rating_before), 0) as avg_rating_change
+		FROM game_participants gp 
+		WHERE gp.player_id = $1`, playerID).
+		Scan(&stats.TotalGames, &stats.WinRate, &stats.AvgRatingChange)
+	if err != nil {
+		return nil, err
+	}
+
+	// Get peak rating
+	err = r.db.QueryRow(ctx, `
+		SELECT 
+			COALESCE(MAX(gp.rating_after), 1500) as peak_rating
+		FROM game_participants gp
+		WHERE gp.player_id = $1`, playerID).
+		Scan(&stats.PeakRating)
+	if err != nil {
+		return nil, err
+	}
+
+	// Calculate current streak (simplified)
+	rows, err := r.db.Query(ctx, `
+		SELECT gp.rating_after > gp.rating_before as won
+		FROM game_participants gp
+		JOIN games g ON gp.game_id = g.id
+		WHERE gp.player_id = $1
+		ORDER BY g.created_at DESC
+		LIMIT 20`, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var results []bool
+	for rows.Next() {
+		var won bool
+		if err := rows.Scan(&won); err != nil {
+			return nil, err
+		}
+		results = append(results, won)
+	}
+
+	// Calculate streaks
+	if len(results) > 0 {
+		// Current streak
+		currentWon := results[0]
+		for i, won := range results {
+			if won == currentWon {
+				if currentWon {
+					stats.CurrentStreak = i + 1
+				} else {
+					stats.CurrentStreak = -(i + 1)
+				}
+			} else {
+				break
+			}
+		}
+
+		// Longest streaks
+		maxWin, maxLose := 0, 0
+		currentWinStreak, currentLoseStreak := 0, 0
+		
+		for _, won := range results {
+			if won {
+				currentWinStreak++
+				currentLoseStreak = 0
+				if currentWinStreak > maxWin {
+					maxWin = currentWinStreak
+				}
+			} else {
+				currentLoseStreak++
+				currentWinStreak = 0
+				if currentLoseStreak > maxLose {
+					maxLose = currentLoseStreak
+				}
+			}
+		}
+		stats.LongestWinStreak = maxWin
+		stats.LongestLoseStreak = maxLose
+	}
+
+	return &stats, nil
+}
+
+func (r *Repository) GetPlayerHeadToHead(ctx context.Context, playerID int) ([]models.HeadToHead, error) {
+	rows, err := r.db.Query(ctx, `
+		WITH player_games AS (
+			SELECT DISTINCT g.id, g.created_at
+			FROM games g
+			JOIN game_participants gp ON g.id = gp.game_id
+			WHERE gp.player_id = $1
+		),
+		opponent_results AS (
+			SELECT 
+				gp2.player_id as opponent_id,
+				p2.name as opponent_name,
+				gp1.rating_after > gp1.rating_before as player_won,
+				g.created_at,
+				ROW_NUMBER() OVER (PARTITION BY gp2.player_id ORDER BY g.created_at DESC) as rn
+			FROM player_games pg
+			JOIN games g ON pg.id = g.id
+			JOIN game_participants gp1 ON g.id = gp1.game_id AND gp1.player_id = $1
+			JOIN game_participants gp2 ON g.id = gp2.game_id AND gp2.player_id != $1
+			JOIN players p2 ON gp2.player_id = p2.id
+		)
+		SELECT 
+			opponent_id,
+			opponent_name,
+			COUNT(*) as total_games,
+			SUM(CASE WHEN player_won THEN 1 ELSE 0 END) as wins,
+			COUNT(*) - SUM(CASE WHEN player_won THEN 1 ELSE 0 END) as losses,
+			CASE WHEN (SELECT player_won FROM opponent_results WHERE rn = 1 AND opponent_results.opponent_id = main.opponent_id) 
+				THEN 'win' ELSE 'loss' END as last_result
+		FROM opponent_results main
+		GROUP BY opponent_id, opponent_name
+		HAVING COUNT(*) > 0
+		ORDER BY total_games DESC`, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var headToHead []models.HeadToHead
+	for rows.Next() {
+		var h2h models.HeadToHead
+		if err := rows.Scan(&h2h.OpponentID, &h2h.OpponentName, &h2h.TotalGames, &h2h.Wins, &h2h.Losses, &h2h.LastResult); err != nil {
+			return nil, err
+		}
+		if h2h.TotalGames > 0 {
+			h2h.WinRate = float64(h2h.Wins) / float64(h2h.TotalGames)
+		}
+		headToHead = append(headToHead, h2h)
+	}
+
+	return headToHead, nil
+}
+
+func (r *Repository) GetPlayerRatingHistory(ctx context.Context, playerID int) ([]models.RatingHistoryPoint, error) {
+	rows, err := r.db.Query(ctx, `
+		SELECT g.created_at, gp.rating_after, g.id
+		FROM game_participants gp
+		JOIN games g ON gp.game_id = g.id
+		WHERE gp.player_id = $1
+		ORDER BY g.created_at ASC`, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var history []models.RatingHistoryPoint
+	for rows.Next() {
+		var point models.RatingHistoryPoint
+		if err := rows.Scan(&point.Date, &point.Rating, &point.GameID); err != nil {
+			return nil, err
+		}
+		history = append(history, point)
+	}
+
+	return history, nil
+}
+
+func (r *Repository) GetPlayerRecentGames(ctx context.Context, playerID int) ([]models.RecentGame, error) {
+	rows, err := r.db.Query(ctx, `
+		WITH player_games AS (
+			SELECT 
+				g.id,
+				g.created_at,
+				g.game_type,
+				gp1.rating_after > gp1.rating_before as won
+			FROM games g
+			JOIN game_participants gp1 ON g.id = gp1.game_id AND gp1.player_id = $1
+		),
+		opponents AS (
+			SELECT 
+				pg.id,
+				STRING_AGG(p.name, ', ' ORDER BY p.name) as opponent_names
+			FROM player_games pg
+			JOIN game_participants gp ON pg.id = gp.game_id AND gp.player_id != $1
+			JOIN players p ON gp.player_id = p.id
+			GROUP BY pg.id
+		)
+		SELECT 
+			pg.id,
+			pg.created_at,
+			pg.won,
+			COALESCE(o.opponent_names, 'Unknown') as opponent,
+			pg.game_type
+		FROM player_games pg
+		LEFT JOIN opponents o ON pg.id = o.id
+		ORDER BY pg.created_at DESC
+		LIMIT 10`, playerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var games []models.RecentGame
+	for rows.Next() {
+		var game models.RecentGame
+		if err := rows.Scan(&game.GameID, &game.Date, &game.Won, &game.Opponent, &game.GameType); err != nil {
+			return nil, err
+		}
+		games = append(games, game)
+	}
+
+	return games, nil
+}

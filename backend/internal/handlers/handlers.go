@@ -3,6 +3,7 @@ package handlers
 import (
 	"encoding/json"
 	"net/http"
+	"strconv"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/sassoonkuyumcian/foosball-elo/internal/models"
@@ -183,4 +184,89 @@ func (h *Handler) UpdatePlayer(w http.ResponseWriter, r *http.Request) {
 	}
 
 	respondJSON(w, http.StatusOK, map[string]string{"message": "Player updated"})
+}
+
+func (h *Handler) GetPlayer(w http.ResponseWriter, r *http.Request) {
+	playerIDStr := chi.URLParam(r, "id")
+	playerID, err := strconv.Atoi(playerIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid player ID")
+		return
+	}
+
+	player, err := h.repo.GetPlayerByID(r.Context(), playerID)
+	if err != nil {
+		respondError(w, http.StatusNotFound, "Player not found")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, player)
+}
+
+func (h *Handler) GetPlayerStats(w http.ResponseWriter, r *http.Request) {
+	playerIDStr := chi.URLParam(r, "id")
+	playerID, err := strconv.Atoi(playerIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid player ID")
+		return
+	}
+
+	stats, err := h.repo.GetPlayerStats(r.Context(), playerID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to fetch player stats")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, stats)
+}
+
+func (h *Handler) GetPlayerHeadToHead(w http.ResponseWriter, r *http.Request) {
+	playerIDStr := chi.URLParam(r, "id")
+	playerID, err := strconv.Atoi(playerIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid player ID")
+		return
+	}
+
+	headToHead, err := h.repo.GetPlayerHeadToHead(r.Context(), playerID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to fetch head-to-head data")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, headToHead)
+}
+
+func (h *Handler) GetPlayerRatingHistory(w http.ResponseWriter, r *http.Request) {
+	playerIDStr := chi.URLParam(r, "id")
+	playerID, err := strconv.Atoi(playerIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid player ID")
+		return
+	}
+
+	history, err := h.repo.GetPlayerRatingHistory(r.Context(), playerID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to fetch rating history")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, history)
+}
+
+func (h *Handler) GetPlayerRecentGames(w http.ResponseWriter, r *http.Request) {
+	playerIDStr := chi.URLParam(r, "id")
+	playerID, err := strconv.Atoi(playerIDStr)
+	if err != nil {
+		respondError(w, http.StatusBadRequest, "Invalid player ID")
+		return
+	}
+
+	games, err := h.repo.GetPlayerRecentGames(r.Context(), playerID)
+	if err != nil {
+		respondError(w, http.StatusInternalServerError, "Failed to fetch recent games")
+		return
+	}
+
+	respondJSON(w, http.StatusOK, games)
 }

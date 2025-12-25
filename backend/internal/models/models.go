@@ -45,3 +45,38 @@ type LeaderboardEntry struct {
 	Wins   int `json:"wins"`
 	Losses int `json:"losses"`
 }
+
+type PlayerStats struct {
+	TotalGames         int     `json:"total_games"`
+	WinRate           float64 `json:"win_rate"`
+	CurrentStreak     int     `json:"current_streak"`
+	LongestWinStreak  int     `json:"longest_win_streak"`
+	LongestLoseStreak int     `json:"longest_losing_streak"`
+	PeakRating        int     `json:"peak_rating"`
+	PeakRatingDate    *time.Time `json:"peak_rating_date"`
+	AvgRatingChange   float64 `json:"avg_rating_change"`
+}
+
+type HeadToHead struct {
+	OpponentID   int     `json:"opponent_id"`
+	OpponentName string  `json:"opponent_name"`
+	TotalGames   int     `json:"total_games"`
+	Wins         int     `json:"wins"`
+	Losses       int     `json:"losses"`
+	WinRate      float64 `json:"win_rate"`
+	LastResult   string  `json:"last_result"`
+}
+
+type RatingHistoryPoint struct {
+	Date   time.Time `json:"date"`
+	Rating int       `json:"rating"`
+	GameID int       `json:"game_id"`
+}
+
+type RecentGame struct {
+	GameID    int       `json:"game_id"`
+	Date      time.Time `json:"date"`
+	Won       bool      `json:"won"`
+	Opponent  string    `json:"opponent"`
+	GameType  string    `json:"game_type"`
+}
