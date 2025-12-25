@@ -17,7 +17,7 @@ function AddPlayer() {
   const fetchPlayers = async () => {
     const res = await fetch(`${API_URL}/players`)
     const data = await res.json()
-    setPlayers(data)
+    setPlayers((data || []).sort((a, b) => a.name.localeCompare(b.name)))
   }
 
   const createPlayer = async (e) => {
