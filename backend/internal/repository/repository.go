@@ -394,12 +394,12 @@ func (r *Repository) DeletePlayer(ctx context.Context, playerID string) error {
 	if err != nil {
 		return err
 	}
-	
+
 	rowsAffected := result.RowsAffected()
 	if rowsAffected == 0 {
 		return fmt.Errorf("player not found")
 	}
-	
+
 	return nil
 }
 
@@ -408,11 +408,11 @@ func (r *Repository) UpdatePlayer(ctx context.Context, playerID string, name str
 	if err != nil {
 		return err
 	}
-	
+
 	if result.RowsAffected() == 0 {
 		return fmt.Errorf("player not found")
 	}
-	
+
 	return nil
 }
 
@@ -428,14 +428,14 @@ func (r *Repository) GetPlayerByID(ctx context.Context, playerID int) (*models.P
 
 func (r *Repository) GetPlayerStats(ctx context.Context, playerID int) (*models.PlayerStats, error) {
 	var stats models.PlayerStats
-	
+
 	// Get basic stats
 	err := r.db.QueryRow(ctx, `
-		SELECT 
+		SELECT
 			COUNT(*) as total_games,
 			COALESCE(AVG(CASE WHEN gp.rating_after > gp.rating_before THEN 1.0 ELSE 0.0 END), 0) as win_rate,
 			COALESCE(AVG(gp.rating_after - gp.rating_before), 0) as avg_rating_change
-		FROM game_participants gp 
+		FROM game_participants gp
 		WHERE gp.player_id = $1`, playerID).
 		Scan(&stats.TotalGames, &stats.WinRate, &stats.AvgRatingChange)
 	if err != nil {
@@ -444,7 +444,7 @@ func (r *Repository) GetPlayerStats(ctx context.Context, playerID int) (*models.
 
 	// Get peak rating
 	err = r.db.QueryRow(ctx, `
-		SELECT 
+		SELECT
 			COALESCE(MAX(gp.rating_after), 1500) as peak_rating
 		FROM game_participants gp
 		WHERE gp.player_id = $1`, playerID).
@@ -494,7 +494,7 @@ func (r *Repository) GetPlayerStats(ctx context.Context, playerID int) (*models.
 		// Longest streaks
 		maxWin, maxLose := 0, 0
 		currentWinStreak, currentLoseStreak := 0, 0
-		
+
 		for _, won := range results {
 			if won {
 				currentWinStreak++
@@ -520,13 +520,12 @@ func (r *Repository) GetPlayerStats(ctx context.Context, playerID int) (*models.
 func (r *Repository) GetPlayerHeadToHead(ctx context.Context, playerID int) ([]models.HeadToHead, error) {
 	rows, err := r.db.Query(ctx, `
 		WITH player_games AS (
-			SELECT DISTINCT g.id, g.created_at
+			SELECT DISTINCT g.id, g.created_at, gp1.team as player_team
 			FROM games g
-			JOIN game_participants gp ON g.id = gp.game_id
-			WHERE gp.player_id = $1
+			JOIN game_participants gp1 ON g.id = gp1.game_id AND gp1.player_id = $1
 		),
 		opponent_results AS (
-			SELECT 
+			SELECT
 				gp2.player_id as opponent_id,
 				p2.name as opponent_name,
 				gp1.rating_after > gp1.rating_before as player_won,
@@ -535,16 +534,18 @@ func (r *Repository) GetPlayerHeadToHead(ctx context.Context, playerID int) ([]m
 			FROM player_games pg
 			JOIN games g ON pg.id = g.id
 			JOIN game_participants gp1 ON g.id = gp1.game_id AND gp1.player_id = $1
-			JOIN game_participants gp2 ON g.id = gp2.game_id AND gp2.player_id != $1
+			JOIN game_participants gp2 ON g.id = gp2.game_id
+				AND gp2.player_id != $1
+				AND gp2.team != pg.player_team  -- Only count opponents (different team)
 			JOIN players p2 ON gp2.player_id = p2.id
 		)
-		SELECT 
+		SELECT
 			opponent_id,
 			opponent_name,
 			COUNT(*) as total_games,
 			SUM(CASE WHEN player_won THEN 1 ELSE 0 END) as wins,
 			COUNT(*) - SUM(CASE WHEN player_won THEN 1 ELSE 0 END) as losses,
-			CASE WHEN (SELECT player_won FROM opponent_results WHERE rn = 1 AND opponent_results.opponent_id = main.opponent_id) 
+			CASE WHEN (SELECT player_won FROM opponent_results WHERE rn = 1 AND opponent_results.opponent_id = main.opponent_id)
 				THEN 'win' ELSE 'loss' END as last_result
 		FROM opponent_results main
 		GROUP BY opponent_id, opponent_name
@@ -597,7 +598,7 @@ func (r *Repository) GetPlayerRatingHistory(ctx context.Context, playerID int) (
 func (r *Repository) GetPlayerRecentGames(ctx context.Context, playerID int) ([]models.RecentGame, error) {
 	rows, err := r.db.Query(ctx, `
 		WITH player_games AS (
-			SELECT 
+			SELECT
 				g.id,
 				g.created_at,
 				g.game_type,
@@ -606,7 +607,7 @@ func (r *Repository) GetPlayerRecentGames(ctx context.Context, playerID int) ([]
 			JOIN game_participants gp1 ON g.id = gp1.game_id AND gp1.player_id = $1
 		),
 		opponents AS (
-			SELECT 
+			SELECT
 				pg.id,
 				STRING_AGG(p.name, ', ' ORDER BY p.name) as opponent_names
 			FROM player_games pg
@@ -614,7 +615,7 @@ func (r *Repository) GetPlayerRecentGames(ctx context.Context, playerID int) ([]
 			JOIN players p ON gp.player_id = p.id
 			GROUP BY pg.id
 		)
-		SELECT 
+		SELECT
 			pg.id,
 			pg.created_at,
 			pg.won,
