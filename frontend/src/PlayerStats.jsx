@@ -40,7 +40,7 @@ function PlayerStats() {
   }
 
   const getFormIcon = (won) => won ? '✅' : '❌'
-  
+
   const getStreakText = (streak) => {
     if (streak > 0) return `${streak} game win streak`
     if (streak < 0) return `${Math.abs(streak)} game losing streak`
@@ -54,7 +54,7 @@ function PlayerStats() {
       <h1>📊 Player Stats</h1>
       <Navigation />
       <div className="container">
-        
+
         {/* Player Overview */}
         <div className="section">
           <h2>{player.name}</h2>

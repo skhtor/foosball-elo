@@ -2,7 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 
 function Navigation() {
   const location = useLocation()
-  
+
   const isActive = (path) => {
     if (path === '/' && location.pathname === '/') return true
     if (path === '/leaderboard' && location.pathname === '/') return true

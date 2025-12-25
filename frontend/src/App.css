@@ -203,11 +203,11 @@ tr:hover {
   .teams {
     grid-template-columns: 1fr;
   }
-  
+
   .game-teams {
     grid-template-columns: 1fr;
   }
-  
+
   .vs {
     text-align: center;
   }

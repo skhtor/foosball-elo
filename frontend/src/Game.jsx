@@ -23,7 +23,9 @@ function Game() {
     fetchPlayers()
     fetchGames()
 
-    const handleClickOutside = () => {
+    const handleClickOutside = (event) => {
+      // Don't close if clicking inside a dropdown
+      if (event.target.closest('.player-dropdown')) return
       setShowDropdowns({ team1_0: false, team1_1: false, team2_0: false, team2_1: false })
     }
     document.addEventListener('click', handleClickOutside)
@@ -136,7 +138,7 @@ function Game() {
             <div className="teams">
               <div className="team">
                 <h3>Team 1</h3>
-                <div style={{position: 'relative'}}>
+                <div style={{position: 'relative'}} className="player-dropdown">
                   <input
                     type="text"
                     placeholder="Search player..."
@@ -158,7 +160,7 @@ function Game() {
                   )}
                 </div>
                 {gameType === 'doubles' && (
-                  <div style={{position: 'relative', marginTop: '10px'}}>
+                  <div style={{position: 'relative', marginTop: '10px'}} className="player-dropdown">
                     <input
                       type="text"
                       placeholder="Search partner..."
@@ -184,7 +186,7 @@ function Game() {
 
               <div className="team">
                 <h3>Team 2</h3>
-                <div style={{position: 'relative'}}>
+                <div style={{position: 'relative'}} className="player-dropdown">
                   <input
                     type="text"
                     placeholder="Search player..."
@@ -206,7 +208,7 @@ function Game() {
                   )}
                 </div>
                 {gameType === 'doubles' && (
-                  <div style={{position: 'relative', marginTop: '10px'}}>
+                  <div style={{position: 'relative', marginTop: '10px'}} className="player-dropdown">
                     <input
                       type="text"
                       placeholder="Search partner..."
