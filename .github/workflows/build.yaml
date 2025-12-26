@@ -10,6 +10,7 @@ env:
   REGISTRY: ghcr.io
   BACKEND_IMAGE: ghcr.io/skhtor/foosball-elo-backend
   FRONTEND_IMAGE: ghcr.io/skhtor/foosball-elo-frontend
+  FRONTEND_PUBLIC_IMAGE: ghcr.io/skhtor/foosball-elo-frontend-public
 
 jobs:
   build-backend:
@@ -19,14 +20,14 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Build and push backend
         uses: docker/build-push-action@v5
         with:
@@ -41,17 +42,40 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Log in to GitHub Container Registry
         uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      
+
       - name: Build and push frontend
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ env.FRONTEND_IMAGE }}:latest,${{ env.FRONTEND_IMAGE }}:${{ github.sha }}
+
+  build-frontend-public:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push frontend public
+        uses: docker/build-push-action@v5
+        with:
+          context: ./frontend
+          file: ./frontend/Dockerfile.public
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: ${{ env.FRONTEND_PUBLIC_IMAGE }}:latest,${{ env.FRONTEND_PUBLIC_IMAGE }}:${{ github.sha }}

@@ -2,6 +2,7 @@ import { Link, useLocation } from 'react-router-dom'
 
 function Navigation() {
   const location = useLocation()
+  const isPublicBuild = import.meta.env.VITE_PUBLIC_ONLY === 'true'
 
   const isActive = (path) => {
     if (path === '/' && location.pathname === '/') return true
@@ -17,8 +18,12 @@ function Navigation() {
   return (
     <div style={{display: 'flex', gap: '10px', justifyContent: 'center', marginBottom: '20px'}}>
       <Link to="/"><button style={buttonStyle('/')}>Leaderboard</button></Link>
-      <Link to="/games"><button style={buttonStyle('/games')}>Games</button></Link>
-      <Link to="/add-player"><button style={buttonStyle('/add-player')}>Players</button></Link>
+      {!isPublicBuild && (
+        <>
+          <Link to="/games"><button style={buttonStyle('/games')}>Games</button></Link>
+          <Link to="/add-player"><button style={buttonStyle('/add-player')}>Players</button></Link>
+        </>
+      )}
     </div>
   )
 }
